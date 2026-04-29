@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ocean Explorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(180deg,#071a28,#0d2d45 50%,#071a28);min-height:100vh;color:#e8f6ff;padding-bottom:48px}
+.header{text-align:center;padding:32px 20px 20px}
+.header h1{font-size:26px;font-weight:800;color:#7dd4f0;letter-spacing:-0.5px;margin:8px 0 4px}
+.header p{color:#5aaccf;font-size:14px;margin-bottom:16px}
+.progress-bar{max-width:280px;margin:0 auto;background:rgba(255,255,255,0.1);border-radius:20px;height:8px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#2dd4bf,#7dd4f0);border-radius:20px;transition:width 0.5s}
+.progress-text{color:#5aaccf;font-size:12px;margin-top:6px;text-align:center}
+.legend{display:flex;gap:8px;padding:0 14px 20px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.legend-item{flex-shrink:0;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.1);border-radius:20px;padding:5px 12px;font-size:12px;color:#8ecce8;font-weight:600;white-space:nowrap}
+.zone-section{padding:0 14px;margin-bottom:28px}
+.zone-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.zone-title{color:#8ecce8;font-size:13px;font-weight:700}
+.zone-depth{color:#3a6a84;font-size:12px}
+.cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card{border-radius:14px;overflow:hidden;cursor:pointer;position:relative;aspect-ratio:4/3;box-shadow:0 4px 18px rgba(0,0,0,0.45);transition:transform 0.15s,box-shadow 0.3s;-webkit-tap-highlight-color:transparent}
+.card:active{transform:scale(0.97)}
+.card.learned{box-shadow:0 0 0 2.5px #2dd4bf,0 4px 20px rgba(0,0,0,0.5)}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card-fallback{width:100%;height:100%;display:none;align-items:center;justify-content:center;font-size:13px;font-weight:600;text-align:center;padding:8px;color:#c8e8f5}
+.card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:28px 10px 10px}
+.card-name{color:#fff;font-weight:700;font-size:12px;line-height:1.2}
+.card-es{color:rgba(255,255,255,0.65);font-size:10px;font-style:italic;margin-top:2px}
+.learned-badge{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:#2dd4bf;display:flex;align-items:center;justify-content:center;font-size:12px;color:#053830;font-weight:800}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{width:100%;max-width:520px;border-radius:22px 22px 0 0;background:#0d2030;max-height:88vh;overflow-y:auto;animation:slideUp 0.25s ease-out}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-handle{width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:14px auto 0}
+.modal-hero{position:relative}
+.modal-hero img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.modal-hero-fallback{width:100%;aspect-ratio:16/9;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#c8e8f5}
+.modal-hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:60%;background:linear-gradient(transparent,rgba(5,15,28,0.92));pointer-events:none}
+.modal-hero-title{position:absolute;bottom:0;left:0;right:0;padding:0 18px 16px;z-index:1}
+.modal-hero-title h2{color:#fff;font-size:20px;font-weight:800;margin:0 0 3px}
+.modal-hero-title .es{color:rgba(255,255,255,0.65);font-style:italic;font-size:13px}
+.modal-body{padding:16px 18px 32px}
+.zone-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.12);color:#8ecce8;font-size:12px;font-weight:600;margin-bottom:16px}
+.facts{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.fact{background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.08);border-radius:14px;padding:13px 15px;display:flex;gap:12px;align-items:flex-start}
+.fact-num{flex-shrink:0;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;margin-top:1px}
+.fact-text{color:#d8eef8;font-size:14px;line-height:1.55;font-weight:500}
+.modal-actions{display:flex;gap:10px}
+.btn-close{flex:1;padding:14px 0;border-radius:14px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#8ecce8;font-size:15px;cursor:pointer;font-weight:600}
+.btn-learn{flex:2;padding:14px 0;border-radius:14px;border:none;background:#2dd4bf;color:#053830;font-size:15px;cursor:pointer;font-weight:800}
+.btn-learned{flex:2;padding:14px 0;border-radius:14px;background:rgba(45,212,191,0.1);color:#2dd4bf;font-size:15px;font-weight:700;text-align:center;border:1px solid rgba(45,212,191,0.3);display:none;align-items:center;justify-content:center}
+@media(min-width:600px){.cards-grid{grid-template-columns:repeat(3,1fr)}.card-name{font-size:13px}}
+@media(min-width:900px){.cards-grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:32px">&#127754;</div>
+  <h1>Ocean Explorer</h1>
+  <p>Tap any card to discover amazing facts!</p>
+  <div class="progress-bar"><div class="progress-fill" id="pfill" style="width:0%"></div></div>
+  <div class="progress-text" id="ptext">0 of 15 learned</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item">&#9728;&#65039; Sunlight Zone</div>
+  <div class="legend-item">&#127749; Twilight Zone</div>
+  <div class="legend-item">&#11044; Midnight Zone</div>
+  <div class="legend-item">&#127807; Freshwater</div>
+</div>
+
+<div id="cards-container"></div>
+
+<div class="modal-overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-hero" id="modal-hero">
+      <img id="modal-img" src="" alt="">
+      <div class="modal-hero-fallback" id="modal-fallback"></div>
+      <div class="modal-hero-title">
+        <h2 id="modal-name"></h2>
+        <div class="es" id="modal-es"></div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="zone-badge" id="modal-badge"></div>
+      <div class="facts" id="modal-facts"></div>
+      <div class="modal-actions">
+        <button class="btn-close" id="btn-close">Close</button>
+        <button class="btn-learn" id="btn-learn">Got it! &#10003;</button>
+        <div class="btn-learned" id="btn-learned">Already learned &#10003;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var BASE = 'https://raw.githubusercontent.com/xwearecollective/ocean-cards/main/';
+
+var ZONES = {
+  Sunlight:   {label:'Sunlight Zone',  depth:'0-200m',        color:'#1a6a8a', dot:'#4aaccc'},
+  Twilight:   {label:'Twilight Zone',  depth:'200-1,000m',    color:'#1a4a7a', dot:'#7bc4e2'},
+  Midnight:   {label:'Midnight Zone',  depth:'1,000-4,000m',  color:'#0e2535', dot:'#4a8db0'},
+  Freshwater: {label:'Freshwater',     depth:'Shallow Lakes', color:'#1a4a1a', dot:'#5aaa5a'}
+};
+
+var ZONE_ORDER = ['Sunlight','Twilight','Midnight','Freshwater'];
+var ZONE_ICONS = {Sunlight:'&#9728;&#65039;',Twilight:'&#127749;',Midnight:'&#11044;',Freshwater:'&#127807;'};
+
+var CARDS = [
+  {id:1, name:'Humpback Whale',     es:'Ballena Jorobada',        zone:'Sunlight',   img:'ballenajorobada.jpg',
+   facts:['Can grow as long as a school bus - about 16 meters long!','Sings songs that last for HOURS to communicate with other whales.','Leaps almost completely out of the water - this is called breaching!','Eats tiny shrimp called krill by gulping huge mouthfuls of seawater.']},
+  {id:2, name:'Barreleye Fish',      es:'Pez Ojo de Barril',       zone:'Twilight',   img:'pezojodebarril.jpg',
+   facts:['Has a completely see-through head - you can actually see its brain!','Its green barrel-shaped eyes can rotate to look up OR forward.','The green color helps filter out sunlight coming from above.','Uses its upward eyes to spot prey silhouetted against dim light.']},
+  {id:3, name:'Humpback Anglerfish', es:'Pez Rape Jorobado',       zone:'Midnight',   img:'pezrapejorobado.jpg',
+   facts:['Has a glowing lure on its head to attract prey in total darkness!','Lives where there is ZERO sunlight - completely pitch black all the time.','Its huge curved teeth act like a cage so prey can never escape.','The glowing lure is powered by special glowing bacteria!']},
+  {id:4, name:'Green Sea Turtle',    es:'Tortuga Marina Verde',    zone:'Sunlight',   img:'tortugamarinaverde.jpg',
+   facts:['Can hold its breath for up to 7 hours while sleeping underwater!','Navigates using the magnetic field of the Earth like a built-in compass.','Has lived on Earth for over 100 million years - before T-Rex went extinct!','Baby turtles follow the moonlight on the water to find the sea.']},
+  {id:5, name:'Axolotl',             es:'Ajolote',                 zone:'Freshwater', img:'ajolote.jpg',
+   facts:['Can regrow lost legs, eyes, and even parts of its brain!','A type of salamander that never fully grows up - stays a baby forever.','Only found naturally in one small lake near Mexico City.','Those feathery things on its head are its gills for breathing underwater.']},
+  {id:6, name:'Bottlenose Dolphin',  es:'Delfin Nariz de Botella', zone:'Sunlight',   img:'delfinnarizedebotella.jpg',
+   facts:['Uses sound waves to see underwater - this is called echolocation!','Can swim up to 35 km/h - faster than most humans can run!','Lives in groups called pods, sometimes with hundreds of members.','Every dolphin has its own unique whistle - like having their own name!']},
+  {id:7, name:'Orca / Killer Whale', es:'Orca',                    zone:'Sunlight',   img:'orca.jpg',
+   facts:['Actually the LARGEST member of the dolphin family!','Different groups of orcas have their own dialects - like different languages!','Can swim up to 56 km/h - one of the fastest marine mammals alive.','Mothers teach calves special hunting tricks passed down for generations.']},
+  {id:8, name:'Octopus',             es:'Pulpo',                   zone:'Twilight',   img:'pulpo.jpg',
+   facts:['Has THREE hearts and BLUE blood!','Can change color AND texture in less than a second to hide!','Each of its 8 arms can think on its own - like having 8 tiny brains!','So smart it can open jars, solve puzzles, and even use tools.']},
+  {id:9, name:'Vampire Squid',       es:'Calamar Vampiro',         zone:'Twilight',   img:'calamarvampiro.jpg',
+   facts:['Despite its name, it is neither a squid nor an octopus - totally unique!','Can wrap its cloak around itself like a cape to vanish from predators!','Its entire body is covered in glowing light spots called photophores.','Lives in the oxygen minimum zone - where most creatures simply cannot breathe.']},
+  {id:10,name:'Pacific Viperfish',   es:'Pez Vibora del Pacifico', zone:'Midnight',   img:'pezviboradelpacifico.jpg',
+   facts:['Has fangs so long they cannot even fit inside its closed mouth!','Has glowing dots along its belly to lure curious prey close.','Can unhinge its jaw to swallow prey bigger than its own head!','Swims hundreds of meters up at night to hunt, then dives back by day.']},
+  {id:11,name:'Cockatoo Squid',      es:'Calamar Cacatua',         zone:'Twilight',   img:'calamarcacatua.jpg',
+   facts:['Named after the cockatoo bird because of its hilarious feathery crest!','Baby cockatoo squids are nearly completely see-through.','Uses flashing light patterns to communicate with other squid.','Can change its color patterns in spectacular rapid displays.']},
+  {id:12,name:'Gulper Eel',          es:'Anguila Engullidora',     zone:'Midnight',   img:'anguilaengullidora.jpg',
+   facts:['Its huge mouth can open wide enough to swallow prey much bigger than itself!','Has a glowing pink tip on its tail it wiggles like bait to attract prey.','Its stomach can stretch enormously to hold very large meals.','Despite looking terrifying, it mostly eats small fish and shrimp!']},
+  {id:13,name:'Fangtooth Fish',      es:'Pez Colmillo',            zone:'Midnight',   img:'pezcolmillo.jpg',
+   facts:['Has the LARGEST teeth of any fish relative to its body size!','Despite its terrifying look it is only 16 cm - smaller than your hand!','Has special pouches so its own fangs do not pierce its brain.','Migrates toward the surface at night to hunt, diving deep back by day.']},
+  {id:14,name:'Bristlemouth',        es:'Pez de Boca Cerdosa',     zone:'Midnight',   img:'pezbocacerdosa.jpg',
+   facts:['The most ABUNDANT vertebrate (backbone animal) on the entire planet!','Has rows of tiny bristle-like teeth that look like a little brush.','Has glowing light spots along its belly - like wearing a starry costume!','Despite being the most common fish, we still know very little about them.']},
+  {id:15,name:'Black Swallower',     es:'Engullidor Negro',        zone:'Midnight',   img:'engullidornegro.jpg',
+   facts:['Can swallow fish MORE than twice its own size!','Its stomach stretches so much it becomes see-through - you can see the prey inside!','Only about 25 cm long, but one of the greediest eaters in the entire ocean.','If the meal is too big, its stomach can actually burst - extreme dining!']}
+  // Add remaining animals here:
+  // {id:16, name:'...', es:'...', zone:'Sunlight|Twilight|Midnight|Freshwater', img:'filename.jpg',
+  //  facts:['fact 1','fact 2','fact 3','fact 4']}
+];
+
+var learned = new Set(JSON.parse(localStorage.getItem('ocean-learned') || '[]'));
+var current = null;
+
+function save() {
+  localStorage.setItem('ocean-learned', JSON.stringify(Array.from(learned)));
+}
+
+function render() {
+  var pct = Math.round(learned.size / CARDS.length * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('ptext').textContent = learned.size + ' of ' + CARDS.length + ' learned';
+  var container = document.getElementById('cards-container');
+  container.innerHTML = '';
+  ZONE_ORDER.forEach(function(zone) {
+    var zCards = CARDS.filter(function(c) { return c.zone === zone; });
+    if (!zCards.length) return;
+    var z = ZONES[zone];
+    var sec = document.createElement('div');
+    sec.className = 'zone-section';
+    var grid = document.createElement('div');
+    grid.className = 'cards-grid';
+    var header = document.createElement('div');
+    header.className = 'zone-header';
+    header.innerHTML = '<span>' + ZONE_ICONS[zone] + '</span><span class="zone-title">' + z.label + '</span><span class="zone-depth">· ' + z.depth + '</span>';
+    sec.appendChild(header);
+    sec.appendChild(grid);
+    container.appendChild(sec);
+    zCards.forEach(function(card) {
+      var isLearned = learned.has(card.id);
+      var div = document.createElement('div');
+      div.className = 'card' + (isLearned ? ' learned' : '');
+      var img = document.createElement('img');
+      img.src = BASE + card.img;
+      img.alt = card.name;
+      var fallback = document.createElement('div');
+      fallback.className = 'card-fallback';
+      fallback.style.background = z.color;
+      fallback.textContent = card.name;
+      img.onerror = function() {
+        img.style.display = 'none';
+        fallback.style.display = 'flex';
+      };
+      var overlay = document.createElement('div');
+      overlay.className = 'card-overlay';
+      overlay.innerHTML = '<div class="card-name">' + card.name + '</div><div class="card-es">' + card.es + '</div>';
+      div.appendChild(img);
+      div.appendChild(fallback);
+      div.appendChild(overlay);
+      if (isLearned) {
+        var badge = document.createElement('div');
+        badge.className = 'learned-badge';
+        badge.textContent = 'v';
+        div.appendChild(badge);
+      }
+      div.addEventListener('click', function() { openModal(card); });
+      grid.appendChild(div);
+    });
+  });
+}
+
+function openModal(card) {
+  current = card;
+  var z = ZONES[card.zone];
+  var img = document.getElementById('modal-img');
+  var fallback = document.getElementById('modal-fallback');
+  img.style.display = 'block';
+  fallback.style.display = 'none';
+  fallback.style.background = z.color;
+  fallback.textContent = card.name;
+  img.onerror = function() {
+    img.style.display = 'none';
+    fallback.style.display = 'flex';
+  };
+  img.src = BASE + card.img;
+  document.getElementById('modal-name').textContent = card.name;
+  document.getElementById('modal-es').textContent = card.es;
+  document.getElementById('modal-badge').innerHTML = ZONE_ICONS[card.zone] + ' ' + z.label + ' · ' + z.depth;
+  document.getElementById('modal-facts').innerHTML = card.facts.map(function(f, i) {
+    return '<div class="fact"><div class="fact-num" style="background:' + z.dot + '">' + (i + 1) + '</div><div class="fact-text">' + f + '</div></div>';
+  }).join('');
+  var isLearned = learned.has(card.id);
+  document.getElementById('btn-learn').style.display = isLearned ? 'none' : 'block';
+  document.getElementById('btn-learned').style.display = isLearned ? 'flex' : 'none';
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+  current = null;
+}
+
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('btn-close').addEventListener('click', closeModal);
+document.getElementById('btn-learn').addEventListener('click', function() {
+  if (!current) return;
+  learned.add(current.id);
+  save();
+  document.getElementById('btn-learn').style.display = 'none';
+  document.getElementById('btn-learned').style.display = 'flex';
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
